@@ -1,0 +1,30 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DASHBOARD_PASSWORD=demo
+      - SERVICE_CHECK_INTERVAL=10
+      - OFFLINE_THRESHOLD=60
+      - LOG_FILE_PATH=/var/log/sample.log
+      - DB_PATH=/data/uptime.db
+    volumes:
+      - /var/log/sample.log:/var/log/sample.log:ro
+      - uptime_data:/data
+
+volumes:
+  uptime_data:
