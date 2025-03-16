@@ -1,9 +1,9 @@
 # YugoSM Dashboard
 
 A lightweight service monitoring dashboard that supports both log-based and endpoint-based uptime monitoring. Monitor your services with ease using either log file updates or health check API endpoints.
+![image](https://github.com/user-attachments/assets/043b53d4-8133-4d5a-927b-25be9abb8066)
 
 ## Features
-
 - 📊 Real-time 24h, 7d, and 30d uptime statistics
 - 🔄 Automatic status updates via WebSocket
 - 📝 Live log viewing
