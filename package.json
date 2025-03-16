@@ -1,7 +1,16 @@
 {
   "name": "yugosm",
-  "private": true,
-  "version": "0.0.0",
+  "private": false,
+  "version": "1.0.0",
+  "description": "A lightweight service monitoring dashboard",
+  "author": {
+    "name": "Navaneeth Krishna",
+    "url": "https://github.com/navaneethkrishna30"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/navaneethk30/yugosm.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
