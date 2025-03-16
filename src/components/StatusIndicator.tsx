@@ -1,6 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Clock, TrendingUp } from 'lucide-react';
+import { Clock, TrendingUp } from 'lucide-react';
 import { ServiceStatus } from '../types';
 import { RelativeTime } from './RelativeTime';
 
@@ -24,15 +23,31 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
         </div>
       </div>
 
-      <div className="flex items-center space-x-2 mb-6">
-        <div
-          className={`w-4 h-4 rounded-full ${
-            status.status ? 'bg-green-500' : 'bg-red-500'
-          }`}
-        />
-        <span className="text-lg font-medium text-card-foreground">
-          {status.status ? 'Running' : 'Stopped'}
-        </span>
+      <div className="flex flex-col space-y-2 mb-6">
+        <div className="flex items-center space-x-2">
+          <div
+            className={`w-4 h-4 rounded-full ${
+              status.status ? 'bg-green-500' : 'bg-red-500'
+            }`}
+          />
+          <span className="text-lg font-medium text-card-foreground">
+            {status.status ? 'Running' : 'Stopped'}
+          </span>
+        </div>
+        
+        <div className="text-sm text-muted-foreground">
+          {status.check_type === 'endpoint' ? (
+            <span>Monitoring health check API of Service</span>
+          ) : (
+            <span>Monitoring Service</span>
+          )}
+        </div>
+        
+        {status.last_error && !status.status && (
+          <div className="text-sm text-red-500">
+            Error: {status.last_error}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

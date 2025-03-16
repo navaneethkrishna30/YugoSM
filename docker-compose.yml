@@ -4,27 +4,29 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "80:80"
+      - "${PORT:-8080}:80"
     environment:
       - VITE_API_URL=http://backend:8000
     depends_on:
       - backend
+    network_mode: "host"
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     environment:
-      - DASHBOARD_PASSWORD=demo
-      - SERVICE_CHECK_INTERVAL=10
-      - OFFLINE_THRESHOLD=60
-      - LOG_FILE_PATH=/var/log/sample.log
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-demo}
+      - SERVICE_CHECK_INTERVAL=${CHECK_INTERVAL:-10}
+      - OFFLINE_THRESHOLD=${OFFLINE_THRESHOLD:-60}
+      - LOG_FILE_PATH=${LOG_FILE_PATH:-/var/log/sample.log}
       - DB_PATH=/data/uptime.db
+      - CHECK_TYPE=${CHECK_TYPE:-log}
+      - HEALTH_CHECK_URL=${HEALTH_CHECK_URL:-}
     volumes:
-      - /var/log/sample.log:/var/log/sample.log:ro
+      - ${LOG_FILE_PATH:-/var/log/sample.log}:${LOG_FILE_PATH:-/var/log/sample.log}:ro
       - uptime_data:/data
+    network_mode: "host"
 
 volumes:
   uptime_data:

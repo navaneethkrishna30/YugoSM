@@ -4,6 +4,9 @@ export interface ServiceStatus {
   uptime_7d: number;
   uptime_30d: number;
   last_updated: string;
+  check_type: 'log' | 'endpoint';
+  health_check_url?: string;
+  last_error?: string;
 }
 
 export interface LogEntry {

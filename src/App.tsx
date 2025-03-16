@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LoginForm } from './components/LoginForm';
 import { StatusIndicator } from './components/StatusIndicator';
 import { LogViewer } from './components/LogViewer';
 import { LoadingScreen } from './components/LoadingScreen';
+import { Footer } from './components/Footer';
 import { AuthState, ServiceStatus, LogEntry } from './types';
 
 function App() {
@@ -17,7 +18,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   const connectWebSocket = useCallback(() => {
-    const wsUrl = `ws://${window.location.hostname}:8000/ws`;
+    const wsUrl = `ws://${window.location.host}/ws`;
     const socket = new WebSocket(wsUrl);
 
     socket.onmessage = (event) => {
@@ -77,16 +78,19 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-            YugoSM Dashboard
-          </h1>
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-grow p-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+              Yugo Service Monitor
+            </h1>
+          </div>
+          <StatusIndicator status={status} />
+          <LogViewer logs={logs} />
         </div>
-        <StatusIndicator status={status} />
-        <LogViewer logs={logs} />
       </div>
+      <Footer />
     </div>
   );
 }

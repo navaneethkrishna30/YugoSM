@@ -6,13 +6,14 @@ import os
 import secrets
 import aiofiles
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Dict
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Literal
+from pydantic import BaseModel, HttpUrl
 import logging
 from collections import deque
 import json
 import sqlite3
 from contextlib import asynccontextmanager
+import aiohttp
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +38,8 @@ LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
 SERVICE_CHECK_INTERVAL = int(os.getenv("SERVICE_CHECK_INTERVAL", "10"))
 OFFLINE_THRESHOLD = int(os.getenv("OFFLINE_THRESHOLD", "30"))
 DB_PATH = os.getenv("DB_PATH", "uptime.db")
+HEALTH_CHECK_URL = os.getenv("HEALTH_CHECK_URL")
+CHECK_TYPE = os.getenv("CHECK_TYPE", "log")
 
 # In-memory storage
 uptime_history = deque(maxlen=168)
@@ -66,6 +69,9 @@ class UptimeMetrics(BaseModel):
     uptime_7d: float
     uptime_30d: float
     last_updated: str
+    check_type: Literal['log', 'endpoint']
+    health_check_url: Optional[str] = None
+    last_error: Optional[str] = None
 
 STORAGE_FILE = "uptime_history.json"
 MAX_HISTORY_DAYS = 30
@@ -85,7 +91,8 @@ def init_db():
             CREATE TABLE IF NOT EXISTS uptime_records (
                 timestamp TEXT NOT NULL,
                 status BOOLEAN NOT NULL,
-                response_time REAL
+                response_time REAL,
+                error_message TEXT
             )
         """)
         conn.execute("""
@@ -95,11 +102,13 @@ def init_db():
             )
         """)
         
-        # Insert default config if not exists
+        # Insert default config
         conn.execute("""
             INSERT OR IGNORE INTO config (key, value)
-            VALUES ('check_interval', '10')
-        """)
+            VALUES 
+                ('check_type', ?),
+                ('health_check_url', ?)
+        """, (CHECK_TYPE, HEALTH_CHECK_URL or ''))
         conn.commit()
 
 @asynccontextmanager
@@ -282,27 +291,55 @@ async def calculate_uptime_metrics(records: List[Dict]) -> UptimeMetrics:
         uptime_count = sum(1 for r in relevant_records if r['status'])
         return (uptime_count / len(relevant_records)) * 100
 
+    latest_record = records[-1] if records else None
+    
     return UptimeMetrics(
-        status=records[-1]['status'] if records else True,
+        status=latest_record['status'] if latest_record else True,
         uptime_24h=calculate_period_uptime(24),
         uptime_7d=calculate_period_uptime(24 * 7),
         uptime_30d=calculate_period_uptime(24 * 30),
-        last_updated=now.isoformat()
+        last_updated=now.isoformat(),
+        check_type=CHECK_TYPE,
+        health_check_url=HEALTH_CHECK_URL if CHECK_TYPE == 'endpoint' else None,
+        last_error=latest_record.get('error_message') if latest_record and not latest_record['status'] else None
     )
 
-async def check_service_status() -> UptimeRecord:
-    """Enhanced service status check."""
-    start_time = datetime.now(timezone.utc)
+async def check_endpoint_health(url: str) -> tuple[bool, Optional[float], Optional[str]]:
+    """Check health of an endpoint using HEAD request (like curl -I)."""
     try:
-        is_active = await check_log_activity()
-        end_time = datetime.now(timezone.utc)
-        response_time = (end_time - start_time).total_seconds()
+        async with aiohttp.ClientSession() as session:
+            start_time = datetime.now()
+            async with session.head(url, timeout=10, allow_redirects=True) as response:
+                end_time = datetime.now()
+                response_time = (end_time - start_time).total_seconds()
+                
+                if response.status in range(200, 300):
+                    return True, response_time, None
+                return False, None, f"HTTP {response.status}"
+    except asyncio.TimeoutError:
+        return False, None, "Timeout"
+    except aiohttp.ClientConnectorError as e:
+        return False, None, f"Connection Error: {str(e)}"
+    except Exception as e:
+        return False, None, str(e)
+
+async def check_service_status() -> UptimeRecord:
+    """Enhanced service status check supporting both log and endpoint checks."""
+    start_time = datetime.now(timezone.utc)
+    
+    try:
+        if CHECK_TYPE == "endpoint" and HEALTH_CHECK_URL:
+            is_active, response_time, error = await check_endpoint_health(HEALTH_CHECK_URL)
+        else:
+            is_active = await check_log_activity()
+            response_time = None
+            error = None if is_active else "Log file not updated"
         
         return UptimeRecord(
             timestamp=start_time,
             status=is_active,
-            response_time=response_time if is_active else None,
-            error_message=None if is_active else "Log file not updated"
+            response_time=response_time,
+            error_message=error
         )
     except Exception as e:
         return UptimeRecord(
